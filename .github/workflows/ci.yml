@@ -1,0 +1,23 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # 22 is the oldest Node whose native type stripping runs this module unflagged; 24 is the current LTS line.
+        node-version: ['22', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm ci
+      - run: npm run typecheck
+      # The module and its tests run on Node's own type stripping: no build step, no bundler in the test path.
+      - run: node --test test/
