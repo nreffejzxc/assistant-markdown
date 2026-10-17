@@ -94,6 +94,30 @@ test('parseAssistantMarkdown reads the block structures a model writes', () => {
   assert.equal(list.items.length, 2);
 });
 
+test('★ an escaped pipe stays inside its cell, and the columns after it stay aligned', () => {
+  // `\|` is Markdown's own way to put a pipe inside a cell. Splitting on every `|` produced three cells — `A`,
+  // `B`, `3` — which put every later value in the row one column left of the header it belongs to.
+  const table = parseAssistantMarkdown('| Product | Qty |\n| --- | --- |\n| A \\| B | 3 |\n| C | 4 |').find(
+    (b) => b.kind === 'table',
+  );
+  assert.ok(table, 'a table is recognised');
+  assert.equal(table.header.length, 2);
+  assert.deepEqual(
+    table.rows.map((row) => row.map((cell) => cell.map((span) => span.text).join(''))),
+    [
+      ['A | B', '3'],
+      ['C', '4'],
+    ],
+  );
+});
+
+test('★ strikethrough is removed, not shown', () => {
+  assert.equal(stripMarkdown('~~old~~ new'), 'old new');
+  // …under the same word boundary as every other marker: inside a word, tildes are data.
+  assert.equal(stripMarkdown('a~~b~~c'), 'a~~b~~c');
+  assert.equal(stripMarkdown('~5 minutes'), '~5 minutes');
+});
+
 test('parseAssistantMarkdown reads a table as a header plus rows of styled cells', () => {
   const blocks = parseAssistantMarkdown('| Product | Qty |\n| --- | --- |\n| Widget A | 3 |\n| Widget B | 0 |');
   const table = blocks.find((b) => b.kind === 'table');
