@@ -20,4 +20,4 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       # The module and its tests run on Node's own type stripping: no build step, no bundler in the test path.
-      - run: node --test test/
+      - run: npm test

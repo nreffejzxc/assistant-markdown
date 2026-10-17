@@ -86,7 +86,7 @@ to run on any string a model returns.
 ```bash
 npm ci
 npm run typecheck     # tsc --noEmit, strict
-node --test test/     # 11 cases — the tests run on Node's own type stripping, no build step
+npm test              # 11 cases — the tests run on Node's own type stripping, no build step
 ```
 
 ## License

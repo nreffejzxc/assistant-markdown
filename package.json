@@ -11,7 +11,7 @@
     "src"
   ],
   "scripts": {
-    "test": "node --test test/",
+    "test": "node scripts/test.mjs",
     "typecheck": "tsc --noEmit"
   },
   "engines": {
