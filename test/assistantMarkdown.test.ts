@@ -118,6 +118,28 @@ test('★ strikethrough is removed, not shown', () => {
   assert.equal(stripMarkdown('~5 minutes'), '~5 minutes');
 });
 
+test('★ a truncated answer loses its dangling opener and keeps the value', () => {
+  // Verbatim from a stored answer that hit its output budget: the member saw `**71,07`.
+  assert.equal(
+    stripMarkdown('…and 15 more movements in this page (the system has **71,07'),
+    '…and 15 more movements in this page (the system has 71,07',
+  );
+  // A numbered item that ended right after its opener renders as its own text.
+  assert.deepEqual(parseInline('**2'), [{ text: '2' }]);
+  assert.equal(stripMarkdown('was ~~gone'), 'was gone');
+  assert.equal(stripMarkdown('SKU `DEMO-'), 'SKU DEMO-');
+});
+
+test('an unpaired opener is only removed where it cannot be data', () => {
+  // A pair is still a pair, and the arithmetic/identifier limits are unchanged.
+  assert.equal(stripMarkdown('**a** and **b'), 'a and b');
+  assert.equal(stripMarkdown('4**5'), '4**5');
+  assert.equal(stripMarkdown('12 * 3 = 36'), '12 * 3 = 36');
+  assert.equal(stripMarkdown('SKU_123_AB'), 'SKU_123_AB');
+  // An opener followed by a space is not half-cleaned: `(?=\S)` is the rule.
+  assert.equal(stripMarkdown('** a'), '** a');
+});
+
 test('parseAssistantMarkdown reads a table as a header plus rows of styled cells', () => {
   const blocks = parseAssistantMarkdown('| Product | Qty |\n| --- | --- |\n| Widget A | 3 |\n| Widget B | 0 |');
   const table = blocks.find((b) => b.kind === 'table');

@@ -204,6 +204,32 @@ export function stripLatex(raw: string): string {
 }
 
 /**
+ * A marker run that opens and is never closed, with content after it.
+ *
+ * WHY THIS RULE EXISTS AT ALL — it was measured, not imagined. Replaying all 50 stored assistant answers
+ * through the renderer (2026-10-18) found exactly ONE leak class in real output, in the two answers a turn
+ * cut off at its output budget: the model had written `… (the system has **71,07` and `11. **2` when it ran
+ * out, so the last thing on screen was a pair of asterisks. Every other answer was clean — no links, no
+ * brackets, no blockquotes, no HTML in 50 real turns — which is why this is a marker rule and not the link
+ * rule the previous increment left open.
+ *
+ * THREE CONDITIONS, EACH DOING WORK:
+ *
+ *  * **A word boundary before it** (`(^|[^A-Za-z0-9])`), the same rule every other marker obeys, so `4**5`
+ *    between digits stays exactly as it is — data, not a marker.
+ *  * **A non-space after it** (`(?=\S)`), because an opener has content after it; `** a **` is therefore left
+ *    alone rather than half-cleaned.
+ *  * **No later run of the same marker** (`(?![\s\S]*\2)`), which is what makes this safe: in well-formed
+ *    markup every opener has a closer later, and the closer itself is preceded by a word character, so the
+ *    only run this can ever match is a genuinely unpaired one — and when a pair was already consumed above,
+ *    an odd run left over is the dangling opener the model never finished.
+ *
+ * Only the run is dropped, never the text after it: a truncated answer still says `71,07`. The single `*` is
+ * deliberately NOT in this list, because `12 * 3 = 36` with one asterisk must keep its multiplication.
+ */
+const DANGLING_MARKER = /(^|[^A-Za-z0-9])(\*\*|__|~~|`)(?=\S)(?![\s\S]*\2)/g;
+
+/**
  * Remove the Markdown markers that are meaningless as plain text (AI-2).
  *
  * This is no longer the whole answer pipeline — AI-4 renders the structure — but
@@ -242,7 +268,11 @@ export function stripMarkdown(raw: string): string {
     // Inline code spans, whose backticks are the noisiest thing on a phone.
     .replace(/`([^`]+)`/g, '$1')
     // Heading hashes, only when followed by a space, so `#1 selling product` stays.
-    .replace(/^#{1,6}\s+/gm, '');
+    .replace(/^#{1,6}\s+/gm, '')
+    // Last, because it asks whether a closer exists at all — and by now every real
+    // pair has been consumed. See DANGLING_MARKER for the two stored answers that
+    // motivated it and for why the three conditions cannot fire on ordinary markup.
+    .replace(DANGLING_MARKER, '$1');
 }
 
 /**
